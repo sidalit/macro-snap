@@ -1,0 +1,81 @@
+--- a/apps/web/tauri/src-tauri/src/desktop/macrod.rs
++++ b/apps/web/tauri/src-tauri/src/desktop/macrod.rs
+@@ -209,39 +209,9 @@
+     directories.join(if cfg!(windows) { ";" } else { ":" })
+ }
+ 
+-/// Locate the macrod binary: an explicit override, the bundled copy next to
+-/// this executable, the resource directory, then the development `PATH`.
+-fn macrod_binary(app: &AppHandle) -> Option<PathBuf> {
+-    let name = if cfg!(windows) {
+-        "macrod.exe"
+-    } else {
+-        "macrod"
+-    };
+-    if let Ok(path) = std::env::var("MACROD_PATH") {
+-        let path = PathBuf::from(path);
+-        if path.is_file() {
+-            return Some(path);
+-        }
+-    }
+-    if let Some(path) = std::env::current_exe()
+-        .ok()
+-        .and_then(|exe| Some(exe.parent()?.join(name)))
+-        .filter(|path| path.is_file())
+-    {
+-        return Some(path);
+-    }
+-    if let Some(path) = app
+-        .path()
+-        .resource_dir()
+-        .ok()
+-        .map(|resources| resources.join(name))
+-        .filter(|path| path.is_file())
+-    {
+-        return Some(path);
+-    }
+-    std::env::split_paths(&macrod_path_env())
+-        .map(|directory| directory.join(name))
+-        .find(|path| path.is_file())
++/// Local host-agent execution is unavailable in the strictly confined snap.
++fn macrod_binary(_app: &AppHandle) -> Option<PathBuf> {
++    None
+ }
+ 
+ fn macrod_command(app: &AppHandle) -> Result<tokio::process::Command, String> {
+--- a/apps/web/tauri/src-tauri/src/lib.rs
++++ b/apps/web/tauri/src-tauri/src/lib.rs
+@@ -312,9 +312,8 @@
+                 embedded_bundle_build,
+                 bundle_routes.clone(),
+             )
+-            // Builds without this feature (just ios-dev, ios-build-no-update)
+-            // must never check for or apply OTA bundles on their own; manual
+-            // checks from settings still work.
++            // The snap serves its embedded bundle and receives updates through snapd.
++            // Builds without automatic updates omit the update IPC commands below.
+             .with_auto_update(cfg!(feature = "auto_apply_update") && !recording),
+         );
+ 
+@@ -407,9 +406,12 @@
+             graphql_cache_plugin::commands::graphql_cache_delete_records,
+             graphql_cache_plugin::commands::graphql_cache_teardown,
+             graphql_cache_plugin::commands::graphql_cache_clear,
++            #[cfg(feature = "auto_apply_update")]
+             macro_bundle_updater_plugin::inbound::plugin::grant_bundle_update,
++            #[cfg(feature = "auto_apply_update")]
+             macro_bundle_updater_plugin::inbound::plugin::perform_update,
+             macro_bundle_updater_plugin::inbound::plugin::ack_bundle_update_reload,
++            #[cfg(feature = "auto_apply_update")]
+             macro_bundle_updater_plugin::inbound::plugin::check_for_update,
+             macro_bundle_updater_plugin::inbound::plugin::get_bundle_debug_info,
+             macro_bundle_updater_plugin::inbound::plugin::get_bundle_update_status,
+@@ -446,7 +448,7 @@
+             #[cfg(desktop)]
+             desktop_update::setup(app, recording)?;
+             diagnostics::setup(app, diagnostics);
+-            #[cfg(any(target_os = "linux", all(windows, debug_assertions)))]
++            #[cfg(all(windows, debug_assertions))]
+             {
+                 use tauri_plugin_deep_link::DeepLinkExt;
+                 app.deep_link()

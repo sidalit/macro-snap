@@ -1,0 +1,128 @@
+name: macro
+base: core24
+version: '2026.10.29.1'
+title: Macro
+icon: snap/gui/macro.png
+summary: A shared workspace for email, chat, documents, tasks and AI agents
+description: |
+  Bring email, team chat, collaborative documents, tasks, calls and AI
+  agents into one connected workspace. Search and link information across
+  your team, with a desktop interface connected to Macro's hosted services.
+
+  This snap supports hosted agents. Running coding agents on this computer
+  is unavailable under strict confinement.
+license: AGPL-3.0-only
+grade: stable
+confinement: strict
+website: https://macro.com
+source-code:
+  - https://github.com/macro-inc/macro
+  - https://github.com/sidalit/macro-snap
+issues:
+  - https://github.com/macro-inc/macro/issues
+  - https://github.com/sidalit/macro-snap/issues
+contact: https://github.com/sidalit/macro-snap/issues
+
+platforms:
+  amd64:
+
+slots:
+  macro-single-instance:
+    interface: dbus
+    bus: session
+    name: org.com_macro_app_prod.SingleInstance
+
+apps:
+  macro:
+    command: bin/macro
+    extensions: [gnome]
+    slots:
+      - macro-single-instance
+    plugs:
+      - audio-playback
+      - audio-record
+      - camera
+      - home
+      - network
+      - removable-media
+
+parts:
+  bun:
+    plugin: nil
+    build-packages:
+      - npm
+    override-build: |
+      npm install --global --prefix "$CRAFT_PART_INSTALL" bun@1.3.5
+    prime:
+      - -*
+
+  macro:
+    plugin: rust
+    source: https://github.com/macro-inc/macro.git
+    source-tag: v$SNAPCRAFT_PROJECT_VERSION
+    source-depth: 1
+    rust-channel: '1.94.0'
+    rust-ignore-toolchain-file: true
+    after: [bun]
+    build-environment:
+      - PATH: $CRAFT_PART_BUILD/.build-tools/bin:$CRAFT_STAGE/bin:$HOME/.cargo/bin:$PATH
+      - CARGO_BUILD_JOBS: $CRAFT_PARALLEL_BUILD_COUNT
+      - SQLX_OFFLINE: 'true'
+      # Public client key used for production feature flags in upstream release 6447086a.
+      # https://macro.com/app/init-rhJjWQTu.js
+      - VITE_POSTHOG_API_KEY: phc_eSQcxAxPf0FAmnCTckz84305pNlMlOdDKciSKkuX0GO
+    build-packages:
+      - binaryen
+      - build-essential
+      - clang
+      - cmake
+      - git
+      - libclang-dev
+      - libdbus-1-dev
+      - libssl-dev
+      - libxdo-dev
+      - patch
+      - pkg-config
+    stage-packages:
+      - gstreamer1.0-libav
+      - libxdo3
+    override-pull: |
+      craftctl default
+      patch -p1 < "$CRAFT_PROJECT_DIR/snap/local/strict-desktop.patch"
+    override-build: |
+      rustup target add wasm32-unknown-unknown
+      cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" just --version 1.46.0
+      cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" wasm-pack --version 0.13.1
+      cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" wasm-bindgen-cli --version 0.2.126
+
+      bun install --frozen-lockfile --linker=hoisted --ignore-scripts
+      bun -e '
+        import { releaseIdentity } from "./apps/web/scripts/desktop-release.mjs";
+        const version = process.env.SNAPCRAFT_PROJECT_VERSION;
+        if (/^\d+\.\d+\.\d+\.\d+$/.test(version)) {
+          const path = "apps/web/package.json";
+          const pkg = await Bun.file(path).json();
+          await Bun.write(path, JSON.stringify({ ...pkg, version: releaseIdentity(`v${version}`).version }));
+        }
+      '
+      bun -e '
+        const path = "apps/web/tauri/src-tauri/tauri.conf.json";
+        const config = await Bun.file(path).json();
+        await Bun.write(path, JSON.stringify({ ...config, plugins: { ...config.plugins, "desktop-update": { enabled: false } } }));
+      '
+      bash vendor/ironcalc/build.sh
+      just --justfile apps/web/justfile build-tauri
+
+      cargo build --locked --release \
+        --manifest-path apps/web/tauri/src-tauri/Cargo.toml \
+        --target-dir "$CRAFT_PART_BUILD/target/desktop" \
+        --bin app --no-default-features --features tauri/custom-protocol
+
+      install -Dm755 target/desktop/release/app "$CRAFT_PART_INSTALL/bin/macro"
+      install -Dm644 "$CRAFT_PROJECT_DIR/snap/gui/macro.png" \
+        "$CRAFT_PART_INSTALL/usr/share/icons/hicolor/256x256/apps/macro_macro.png"
+      install -Dm644 LICENSE.txt "$CRAFT_PART_INSTALL/usr/share/doc/macro/LICENSE.txt"
+      install -Dm644 vendor/ironcalc/LICENSE-MIT \
+        "$CRAFT_PART_INSTALL/usr/share/doc/macro/ironcalc/LICENSE-MIT"
+      install -Dm644 vendor/ironcalc/LICENSE-Apache-2.0 \
+        "$CRAFT_PART_INSTALL/usr/share/doc/macro/ironcalc/LICENSE-Apache-2.0"

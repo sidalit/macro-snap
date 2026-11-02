@@ -45,19 +45,7 @@
  fn macrod_command(app: &AppHandle) -> Result<tokio::process::Command, String> {
 --- a/apps/web/tauri/src-tauri/src/lib.rs
 +++ b/apps/web/tauri/src-tauri/src/lib.rs
-@@ -312,9 +312,8 @@
-                 embedded_bundle_build,
-                 bundle_routes.clone(),
-             )
--            // Builds without this feature (just ios-dev, ios-build-no-update)
--            // must never check for or apply OTA bundles on their own; manual
--            // checks from settings still work.
-+            // The snap serves its embedded bundle and receives updates through snapd.
-+            // Builds without automatic updates omit the update IPC commands below.
-             .with_auto_update(cfg!(feature = "auto_apply_update") && !recording),
-         );
- 
-@@ -407,9 +406,12 @@
+@@ -407,9 +407,12 @@
              graphql_cache_plugin::commands::graphql_cache_delete_records,
              graphql_cache_plugin::commands::graphql_cache_teardown,
              graphql_cache_plugin::commands::graphql_cache_clear,
@@ -70,7 +58,7 @@
              macro_bundle_updater_plugin::inbound::plugin::check_for_update,
              macro_bundle_updater_plugin::inbound::plugin::get_bundle_debug_info,
              macro_bundle_updater_plugin::inbound::plugin::get_bundle_update_status,
-@@ -446,7 +448,7 @@
+@@ -446,7 +449,7 @@
              #[cfg(desktop)]
              desktop_update::setup(app, recording)?;
              diagnostics::setup(app, diagnostics);

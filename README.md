@@ -7,7 +7,7 @@
 **A workspace for documents, messages, tasks and AI agents**
 
 [![macro](https://snapcraft.io/macro/badge.svg)](https://snapcraft.io/macro)
-[![Base: core24](https://img.shields.io/badge/Base-core24-2C8C3C?logo=canonical&logoColor=white)](https://snapcraft.io/core24)
+[![Base: core26](https://img.shields.io/badge/Base-core26-2C8C3C?logo=canonical&logoColor=white)](https://snapcraft.io/core26)
 ![Confinement: strict](https://img.shields.io/badge/Confinement-strict-2C8C3C)
 [![Maintainer: sidaliteir](https://img.shields.io/badge/Maintainer-sidaliteir-2C8C3C?logo=snapcraft&logoColor=white)](https://snapcraft.io/publisher/sidaliteir)
 ![Architecture: amd64](https://img.shields.io/badge/Architecture-amd64-2C8C3C?logo=linux&logoColor=white)

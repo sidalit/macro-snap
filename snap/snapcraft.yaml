@@ -1,5 +1,5 @@
 name: macro
-base: core24
+base: core26
 version: '2026.10.29.1'
 title: Macro
 icon: snap/gui/macro.png

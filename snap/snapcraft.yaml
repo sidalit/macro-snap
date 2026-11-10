@@ -77,6 +77,8 @@ parts:
       - clang
       - cmake
       - git
+      # wasm-pack links bzip2.
+      - libbz2-dev
       - libclang-dev
       - libdbus-1-dev
       - libssl-dev

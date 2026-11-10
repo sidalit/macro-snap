@@ -91,6 +91,19 @@ parts:
     override-pull: |
       craftctl default
       patch -p1 < "$CRAFT_PROJECT_DIR/snap/local/strict-desktop.patch"
+      # snapd delivers updates, so the bundle updater commands are built only
+      # with auto_apply_update. Unlike a patch, this survives new neighbouring
+      # commands, and it fails if upstream renames any of the three.
+      lib=apps/web/tauri/src-tauri/src/lib.rs
+      awk '
+        /^ *macro_bundle_updater_plugin::inbound::plugin::(grant_bundle_update|perform_update|check_for_update),$/ {
+          indent = $0; sub(/[^ ].*/, "", indent)
+          print indent "#[cfg(feature = \"auto_apply_update\")]"; gated++
+        }
+        { print }
+        END { if (gated != 3) exit 1 }
+      ' "$lib" > "$lib.snap"
+      mv "$lib.snap" "$lib"
     override-build: |
       rustup target add wasm32-unknown-unknown
       cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" just --version 1.46.0

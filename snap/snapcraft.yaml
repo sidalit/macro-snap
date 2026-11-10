@@ -1,6 +1,6 @@
 name: macro
 base: core26
-version: '2026.10.29.1'
+version: '2026.11.6.1'
 title: Macro
 icon: snap/gui/macro.png
 summary: A shared workspace for email, chat, documents, tasks and AI agents

@@ -105,7 +105,10 @@ parts:
       ' "$lib" > "$lib.snap"
       mv "$lib.snap" "$lib"
     override-build: |
-      rustup target add wasm32-unknown-unknown
+      # Upstream's Rust, without the other targets its rust-toolchain.toml installs.
+      RUSTUP_TOOLCHAIN=$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)
+      export RUSTUP_TOOLCHAIN
+      rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --target wasm32-unknown-unknown
       cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" just --version 1.46.0
       cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" wasm-pack --version 0.13.1
       cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" wasm-bindgen-cli --version 0.2.126

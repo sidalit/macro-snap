@@ -110,7 +110,7 @@ parts:
       export RUSTUP_TOOLCHAIN
       rustup toolchain install "$RUSTUP_TOOLCHAIN" --profile minimal --target wasm32-unknown-unknown
       cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" just --version 1.46.0
-      cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" wasm-pack --version 0.13.1
+      cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" wasm-pack --version 0.15.1
       cargo install --locked --root "$CRAFT_PART_BUILD/.build-tools" wasm-bindgen-cli --version 0.2.126
 
       bun install --frozen-lockfile --linker=hoisted --ignore-scripts
